@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}{{ question.title }} — База ответов{% endblock %}
+
+{% block content %}
+<nav class="breadcrumbs">
+    <a href="{% url 'qa:subject_list' %}">Предметы</a>
+    <span>/</span>
+    <a href="{{ question.subject.get_absolute_url }}">{{ question.subject.name }}</a>
+    <span>/</span>
+    <span>Вопрос</span>
+</nav>
+
+<article class="card question-full">
+    <h1>{{ question.title }}</h1>
+    <div class="meta">
+        <span>Автор: {{ question.author.username }}</span>
+        <span>{{ question.created_at|date:"d.m.Y H:i" }}</span>
+        {% if question.updated_at|date:"U" != question.created_at|date:"U" %}
+            <span>Изменён: {{ question.updated_at|date:"d.m.Y H:i" }}</span>
+        {% endif %}
+    </div>
+    <div class="prose">{{ question.body|linebreaks }}</div>
+    {% if user == question.author or user.is_staff %}
+        <div class="actions">
+            <a class="btn btn-secondary btn-small" href="{% url 'qa:question_update' question.pk %}">Редактировать</a>
+            <a class="btn btn-danger btn-small" href="{% url 'qa:question_delete' question.pk %}">Удалить</a>
+        </div>
+    {% endif %}
+</article>
+
+<section class="answers-section">
+    <div class="section-head">
+        <h2>Ответы <span class="count">{{ answers|length }}</span></h2>
+        <p class="muted">Сортировка: по рейтингу, затем по дате.</p>
+    </div>
+
+    {% for answer in answers %}
+        <article class="card answer-card" id="answer-{{ answer.pk }}">
+            <div class="vote-box">
+                <form method="post" action="{% url 'qa:answer_vote' answer.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="value" value="1">
+                    <button type="submit" class="vote-btn{% if answer.user_vote == 1 %} active{% endif %}"
+                            title="Лайк" aria-label="Лайк"
+                            {% if not user.is_authenticated %}disabled{% endif %}>▲</button>
+                </form>
+                <span class="rating" title="Рейтинг">{{ answer.rating }}</span>
+                <form method="post" action="{% url 'qa:answer_vote' answer.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="value" value="-1">
+                    <button type="submit" class="vote-btn{% if answer.user_vote == -1 %} active{% endif %}"
+                            title="Дизлайк" aria-label="Дизлайк"
+                            {% if not user.is_authenticated %}disabled{% endif %}>▼</button>
+                </form>
+                <span class="vote-hint">{{ answer.like_count }} / {{ answer.dislike_count }}</span>
+            </div>
+
+            <div class="answer-main">
+                <div class="meta">
+                    <span>{{ answer.author.username }}</span>
+                    <span>{{ answer.created_at|date:"d.m.Y H:i" }}</span>
+                    {% if answer.updated_at|date:"U" != answer.created_at|date:"U" %}
+                        <span>Изменён: {{ answer.updated_at|date:"d.m.Y H:i" }}</span>
+                    {% endif %}
+                </div>
+                <div class="prose">{{ answer.body|linebreaks }}</div>
+
+                {% with attachments=answer.attachments.all %}
+                    {% if attachments %}
+                        <div class="attachments">
+                            {% for attachment in attachments %}
+                                <div class="attachment">
+                                    {% if attachment.is_image %}
+                                        <a href="{{ attachment.file.url }}" target="_blank" rel="noopener">
+                                            <img src="{{ attachment.file.url }}" alt="{{ attachment.original_name }}" loading="lazy">
+                                        </a>
+                                    {% else %}
+                                        <span class="file-icon">📄</span>
+                                    {% endif %}
+                                    <a class="attachment-name" href="{{ attachment.file.url }}" target="_blank" rel="noopener">{{ attachment.original_name }}</a>
+                                    {% if user == answer.author or user.is_staff %}
+                                        <form method="post" action="{% url 'qa:attachment_delete' attachment.pk %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="link-danger" title="Удалить файл">удалить</button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                {% if user == answer.author or user.is_staff %}
+                    <div class="actions">
+                        <a class="btn btn-secondary btn-small" href="{% url 'qa:answer_update' answer.pk %}">Редактировать</a>
+                        <a class="btn btn-danger btn-small" href="{% url 'qa:answer_delete' answer.pk %}">Удалить</a>
+                    </div>
+                {% endif %}
+            </div>
+        </article>
+    {% empty %}
+        <div class="empty-state">
+            <h2>Ответов пока нет</h2>
+            <p>Напишите первый ответ на этот вопрос.</p>
+        </div>
+    {% endfor %}
+</section>
+
+<section class="card form-card" id="answer-form">
+    <h2>Ваш ответ</h2>
+    {% if user.is_authenticated %}
+        <form method="post" action="{% url 'qa:answer_create' question.pk %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% include "includes/form_fields.html" with form=answer_form %}
+            <button type="submit" class="btn">Отправить ответ</button>
+        </form>
+    {% else %}
+        <p>
+            <a href="{% url 'login' %}?next={{ request.path|urlencode }}">Войдите</a>
+            или <a href="{% url 'register' %}">зарегистрируйтесь</a>, чтобы ответить.
+        </p>
+    {% endif %}
+</section>
+{% endblock %}

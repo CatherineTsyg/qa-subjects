@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}Редактирование вопроса{% else %}Новый вопрос{% endif %} — База ответов{% endblock %}
+
+{% block content %}
+<nav class="breadcrumbs">
+    <a href="{% url 'qa:subject_list' %}">Предметы</a>
+    <span>/</span>
+    <span>{% if object %}Редактирование вопроса{% else %}Новый вопрос{% endif %}</span>
+</nav>
+
+<section class="card form-card">
+    <h1>{% if object %}Редактировать вопрос{% else %}Задать вопрос{% endif %}</h1>
+    <form method="post">
+        {% csrf_token %}
+        {% include "includes/form_fields.html" with form=form %}
+        <div class="form-actions">
+            <button type="submit" class="btn">{% if object %}Сохранить{% else %}Опубликовать{% endif %}</button>
+            {% if object %}
+                <a class="btn btn-secondary" href="{{ object.get_absolute_url }}">Отмена</a>
+            {% else %}
+                <a class="btn btn-secondary" href="{% url 'qa:subject_list' %}">Отмена</a>
+            {% endif %}
+        </div>
+    </form>
+</section>
+{% endblock %}

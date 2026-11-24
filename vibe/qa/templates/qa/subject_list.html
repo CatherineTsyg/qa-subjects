@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Предметы — База ответов{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <div>
+        <h1>Предметы</h1>
+        <p class="muted">Выберите предмет, чтобы посмотреть вопросы и ответы.</p>
+    </div>
+    {% if user.is_authenticated %}
+        <a class="btn" href="{% url 'qa:question_create' %}">Задать вопрос</a>
+    {% endif %}
+</section>
+
+{% if subjects %}
+    <div class="grid">
+        {% for subject in subjects %}
+            <a class="card subject-card" href="{{ subject.get_absolute_url }}">
+                <h2>{{ subject.name }}</h2>
+                <p class="muted">{{ subject.description|default:"Описание пока не добавлено."|truncatechars:140 }}</p>
+                <span class="badge">Вопросов: {{ subject.question_count }}</span>
+            </a>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <h2>Предметов пока нет</h2>
+        <p>Предметы добавляются через <a href="/admin/">админку</a>.</p>
+    </div>
+{% endif %}
+{% endblock %}

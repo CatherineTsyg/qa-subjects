@@ -1,0 +1,53 @@
+{% load static %}
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}База ответов по предметам{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+<header class="site-header">
+    <div class="container header-inner">
+        <a class="brand" href="{% url 'qa:subject_list' %}">
+            <span class="brand-mark">Q</span>
+            <span>База ответов</span>
+        </a>
+        <nav class="nav">
+            <a href="{% url 'qa:subject_list' %}">Предметы</a>
+            {% if user.is_authenticated %}
+                <a href="{% url 'qa:question_create' %}">Задать вопрос</a>
+                <span class="nav-user">{{ user.username }}</span>
+                <form class="logout-form" method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="nav-link-muted">Выйти</button>
+                </form>
+            {% else %}
+                <a href="{% url 'login' %}">Вход</a>
+                <a class="btn btn-small" href="{% url 'register' %}">Регистрация</a>
+            {% endif %}
+        </nav>
+    </div>
+</header>
+
+<main class="container page">
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+    <div class="container">
+        <span>База ответов по предметам</span>
+        <span class="muted">Подготовка к экзаменам вместе</span>
+    </div>
+</footer>
+</body>
+</html>

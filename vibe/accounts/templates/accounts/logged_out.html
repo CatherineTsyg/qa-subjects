@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}Выход — База ответов{% endblock %}
+
+{% block content %}
+<section class="card form-card narrow">
+    <h1>Вы вышли из аккаунта</h1>
+    <p class="muted">Спасибо, что заглянули. Возвращайтесь с новыми вопросами!</p>
+    <a class="btn" href="{% url 'qa:subject_list' %}">К предметам</a>
+</section>
+{% endblock %}

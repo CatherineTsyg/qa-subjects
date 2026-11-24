@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}Редактирование ответа{% else %}Новый ответ{% endif %} — База ответов{% endblock %}
+
+{% block content %}
+<nav class="breadcrumbs">
+    <a href="{% url 'qa:subject_list' %}">Предметы</a>
+    <span>/</span>
+    <a href="{{ question.subject.get_absolute_url }}">{{ question.subject.name }}</a>
+    <span>/</span>
+    <a href="{{ question.get_absolute_url }}">{{ question.title|truncatechars:50 }}</a>
+</nav>
+
+<section class="card form-card">
+    <h1>{% if object %}Редактировать ответ{% else %}Ответ на вопрос{% endif %}</h1>
+    <p class="muted">{{ question.title }}</p>
+
+    {% if object and object.attachments.all %}
+        <div class="attachments">
+            {% for attachment in object.attachments.all %}
+                <div class="attachment">
+                    {% if attachment.is_image %}
+                        <a href="{{ attachment.file.url }}" target="_blank" rel="noopener">
+                            <img src="{{ attachment.file.url }}" alt="{{ attachment.original_name }}" loading="lazy">
+                        </a>
+                    {% else %}
+                        <span class="file-icon">📄</span>
+                    {% endif %}
+                    <a class="attachment-name" href="{{ attachment.file.url }}" target="_blank" rel="noopener">{{ attachment.original_name }}</a>
+                    <form method="post" action="{% url 'qa:attachment_delete' attachment.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="link-danger" title="Удалить файл">удалить</button>
+                    </form>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {% include "includes/form_fields.html" with form=form %}
+        <div class="form-actions">
+            <button type="submit" class="btn">{% if object %}Сохранить{% else %}Опубликовать{% endif %}</button>
+            <a class="btn btn-secondary" href="{{ question.get_absolute_url }}">Отмена</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

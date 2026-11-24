@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}{{ subject.name }} — База ответов{% endblock %}
+
+{% block content %}
+<nav class="breadcrumbs">
+    <a href="{% url 'qa:subject_list' %}">Предметы</a>
+    <span>/</span>
+    <span>{{ subject.name }}</span>
+</nav>
+
+<section class="page-head">
+    <div>
+        <h1>{{ subject.name }}</h1>
+        <p class="muted">{{ subject.description|default:"Описание пока не добавлено." }}</p>
+    </div>
+    {% if user.is_authenticated %}
+        <a class="btn" href="{% url 'qa:question_create' %}?subject={{ subject.slug }}">Задать вопрос</a>
+    {% endif %}
+</section>
+
+{% if questions %}
+    <div class="stack">
+        {% for question in questions %}
+            <article class="card question-card">
+                <h2><a href="{{ question.get_absolute_url }}">{{ question.title }}</a></h2>
+                <div class="meta">
+                    <span>{{ question.author.username }}</span>
+                    <span>{{ question.created_at|date:"d.m.Y H:i" }}</span>
+                    <span>Ответов: {{ question.answer_count }}</span>
+                </div>
+            </article>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <h2>Вопросов пока нет</h2>
+        <p>Станьте первым, кто задаст вопрос по этому предмету.</p>
+    </div>
+{% endif %}
+{% endblock %}
