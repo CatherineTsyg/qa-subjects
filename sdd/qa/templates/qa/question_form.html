@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{% if question %}Редактирование вопроса{% else %}Новый вопрос{% endif %}{% endblock %}
+{% block content %}
+<h1>{% if question %}Редактирование вопроса{% else %}Новый вопрос{% endif %}</h1>
+{% if subject %}<p class="meta">Предмет: {{ subject.name }}</p>{% endif %}
+<form method="post" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+        <div class="form-row">
+            {{ field.label_tag }}
+            {{ field }}
+            {{ field.errors }}
+        </div>
+    {% endfor %}
+    <button type="submit">Сохранить</button>
+</form>
+{% endblock %}

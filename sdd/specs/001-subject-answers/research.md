@@ -212,7 +212,8 @@ PostgreSQL. После конфликта голос обновляется по
 - `db` — PostgreSQL 16, healthcheck `pg_isready`;
 - `valkey` — Valkey 8, healthcheck `valkey-cli ping`;
 - `web` — сборка из `Dockerfile`, `depends_on` с `condition: service_healthy`, запуск
-  `gunicorn config.wsgi:application --bind 0.0.0.0:8001`; healthcheck — Python-скрипт без `curl`:
+  `gunicorn config.wsgi:application --bind 0.0.0.0:8001 --workers 4 --threads 4 --timeout 60`;
+  healthcheck — Python-скрипт без `curl`:
   `python -c "import urllib.request; urllib.request.urlopen('http://localhost:8001/healthz/', timeout=3)"`.
 
 `web` публикуется на `${WEB_PORT:-8001}:8001`. `localhost` и `127.0.0.1` входят в

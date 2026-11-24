@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Новое вложение{% endblock %}
+{% block content %}
+<h1>Прикрепить файл</h1>
+<p class="meta">Ответ #{{ answer.id }} к вопросу «{{ answer.question.title }}»</p>
+<p class="meta">
+    Допустимы jpg, jpeg, png, webp (до 5 МБ) и pdf, txt, doc, docx (до 10 МБ).
+</p>
+<form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+        <div class="form-row">
+            {{ field.label_tag }}
+            {{ field }}
+            {{ field.errors }}
+        </div>
+    {% endfor %}
+    <button type="submit">Загрузить</button>
+</form>
+{% endblock %}

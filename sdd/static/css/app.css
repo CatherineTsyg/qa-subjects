@@ -1,0 +1,181 @@
+:root {
+    color-scheme: light;
+    --border: #d6dbe3;
+    --accent: #1f5f8b;
+    --muted: #5f6b7a;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: #1c2430;
+    background: #f6f7f9;
+    line-height: 1.5;
+}
+
+.site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1.25rem;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+}
+
+.brand {
+    font-weight: 700;
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.site-nav {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.site-nav a,
+.link-button {
+    color: var(--accent);
+    text-decoration: none;
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+}
+
+.site-main {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 3rem;
+}
+
+h1,
+h2 {
+    line-height: 1.25;
+}
+
+.messages {
+    list-style: none;
+    padding: 0;
+}
+
+.message {
+    padding: 0.65rem 0.9rem;
+    border-radius: 0.4rem;
+    margin-bottom: 0.5rem;
+    background: #eef4fa;
+    border: 1px solid #c7ddf0;
+}
+
+.message.error {
+    background: #fdecec;
+    border-color: #f3c2c2;
+}
+
+.subject-list,
+.question-list,
+.answer-list,
+.attachment-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.subject-list li,
+.question-list li,
+.answer {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.meta {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.actions form {
+    margin: 0;
+}
+
+button,
+input[type="submit"] {
+    background: var(--accent);
+    color: #fff;
+    border: 0;
+    border-radius: 0.35rem;
+    padding: 0.45rem 0.8rem;
+    font: inherit;
+    cursor: pointer;
+}
+
+button.secondary {
+    background: #e8edf3;
+    color: #25313f;
+}
+
+button.active {
+    outline: 2px solid #e0a100;
+}
+
+.rating {
+    font-weight: 700;
+}
+
+.form-row {
+    margin-bottom: 0.9rem;
+}
+
+.form-row label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+}
+
+.form-row input[type="text"],
+.form-row input[type="password"],
+.form-row textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.35rem;
+    font: inherit;
+}
+
+.errorlist {
+    color: #b42318;
+    padding-left: 1.1rem;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.attachments img {
+    max-width: 100%;
+    max-height: 18rem;
+    display: block;
+}
+
+.inline-form {
+    display: inline;
+}

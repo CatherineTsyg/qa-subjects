@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load qa_extras %}
+{% block title %}{{ question.title }}{% endblock %}
+{% block content %}
+<p class="meta">
+    <a href="{% url 'subject_detail' question.subject_id %}">← {{ question.subject.name }}</a>
+</p>
+<h1>{{ question.title }}</h1>
+<p>{{ question.body|linebreaksbr }}</p>
+<p class="meta">Автор: {{ question.author.username }} · {{ question.created_at|date:"d.m.Y H:i" }}</p>
+
+{% if user.is_authenticated and user.id == question.author_id or user.is_staff %}
+    <div class="actions">
+        <a href="{% url 'question_edit' question.id %}">Редактировать вопрос</a>
+        <a href="{% url 'question_delete' question.id %}">Удалить вопрос</a>
+    </div>
+{% endif %}
+
+<h2>Ответы</h2>
+{% if page_obj.object_list %}
+    <div class="answer-list">
+        {% for answer in page_obj %}
+            <article class="answer">
+                {% with vote=user_votes|get_item:answer.id %}
+                <p>{{ answer.body|linebreaksbr }}</p>
+                <p class="meta">
+                    Автор: {{ answer.author_username }} · {{ answer.created_at|date:"d.m.Y H:i" }}
+                    · <span class="rating">Рейтинг: {{ answer.rating }}</span>
+                </p>
+
+                {% if answer.attachments %}
+                    <ul class="attachment-list">
+                        {% for attachment in answer.attachments %}
+                            <li>
+                                <a href="{% url 'attachment_download' attachment.id %}">{{ attachment.original_name }}</a>
+                                <span class="meta">({{ attachment.size }} байт)</span>
+                                {% if user.is_authenticated and user.id == answer.author_id or user.is_staff %}
+                                    <a href="{% url 'attachment_delete' attachment.id %}">Удалить вложение</a>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+
+                <div class="actions">
+                    {% if user.is_authenticated and user.id != answer.author_id %}
+                        <form method="post" action="{% url 'answer_vote' answer.id %}">
+                            {% csrf_token %}
+                            <button type="submit" name="value" value="like" class="{% if vote == 1 %}active{% endif %}">Лайк</button>
+                            <button type="submit" name="value" value="dislike" class="{% if vote == -1 %}active{% endif %}">Дизлайк</button>
+                        </form>
+                    {% endif %}
+
+                    {% if user.is_authenticated and user.id == answer.author_id %}
+                        <a href="{% url 'attachment_create' answer.id %}">Прикрепить файл</a>
+                    {% endif %}
+
+                    {% if user.is_authenticated and user.id == answer.author_id or user.is_staff %}
+                        <a href="{% url 'answer_edit' answer.id %}">Редактировать ответ</a>
+                        <a href="{% url 'answer_delete' answer.id %}">Удалить ответ</a>
+                    {% endif %}
+                </div>
+                {% endwith %}
+            </article>
+        {% endfor %}
+    </div>
+    {% include "includes/pagination.html" %}
+{% else %}
+    <p>Ответов пока нет.</p>
+{% endif %}
+
+{% if user.is_authenticated %}
+    <p><a href="{% url 'answer_create' question.id %}">Написать ответ</a></p>
+{% else %}
+    <p class="meta"><a href="{% url 'login' %}?next={{ request.path|urlencode }}">Войдите</a>, чтобы ответить.</p>
+{% endif %}
+{% endblock %}

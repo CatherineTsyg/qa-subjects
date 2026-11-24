@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ subject.name }}{% endblock %}
+{% block content %}
+<p class="meta"><a href="{% url 'subject_list' %}">← Все предметы</a></p>
+<h1>{{ subject.name }}</h1>
+{% if subject.description %}<p>{{ subject.description }}</p>{% endif %}
+
+{% if user.is_authenticated %}
+    <p><a href="{% url 'question_create' subject.id %}">Задать вопрос</a></p>
+{% endif %}
+
+{% if page_obj.object_list %}
+    <ul class="question-list">
+        {% for question in page_obj %}
+            <li>
+                <h2><a href="{% url 'question_detail' question.id %}">{{ question.title }}</a></h2>
+                <p class="meta">Автор: {{ question.author.username }} · {{ question.created_at|date:"d.m.Y H:i" }}</p>
+            </li>
+        {% endfor %}
+    </ul>
+    {% include "includes/pagination.html" %}
+{% else %}
+    <p>В этом предмете пока нет вопросов.</p>
+{% endif %}
+{% endblock %}

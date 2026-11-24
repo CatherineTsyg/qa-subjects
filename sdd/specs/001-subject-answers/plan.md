@@ -146,7 +146,8 @@ sdd/
 │       ├── test_attachments.py
 │       ├── test_cache.py
 │       ├── test_admin.py
-│       └── test_csrf.py
+│       ├── test_csrf.py
+│       └── test_commands.py
 ├── scripts/
 │   └── benchmark_pages.py   # p95, urllib + ThreadPoolExecutor
 ├── static/
@@ -249,6 +250,8 @@ plan.md и data-model.md не дублируют её. Инвалидация р
   голосов пользователя; management-команда `seed_demo` наполняет 10 000 вопросов и 100 000
   ответов, скрипт `scripts/benchmark_pages.py` измеряет p95 времени ответа трёх страниц при 100
   потоках через `urllib` и `ThreadPoolExecutor`, результат фиксируется в `quickstart.md`.
+- Management-команда `seed_demo`: создаёт заданный объём данных и идемпотентна при повторном
+  запуске.
 
 ## Complexity Tracking
 
