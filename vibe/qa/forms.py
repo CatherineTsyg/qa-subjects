@@ -57,6 +57,7 @@ class AnswerForm(forms.ModelForm):
         ],
         help_text=(
             "Можно прикрепить несколько файлов. "
+            f"Не более {settings.MAX_FILES_PER_ANSWER} файлов на ответ. "
             f"Фото: {', '.join(IMAGE_EXTENSIONS)}. "
             f"Документы: {', '.join(DOCUMENT_EXTENSIONS)}. "
             f"Размер каждого файла — до "
@@ -79,6 +80,21 @@ class AnswerForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["body"].widget.attrs.setdefault("class", "form-input")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        files = cleaned_data.get("files") or []
+        max_files = settings.MAX_FILES_PER_ANSWER
+        existing = (
+            self.instance.attachments.count() if self.instance.pk else 0
+        )
+        if existing + len(files) > max_files:
+            self.add_error(
+                "files",
+                f"К ответу можно прикрепить не более {max_files} файлов. "
+                f"Уже прикреплено: {existing}, выбрано: {len(files)}.",
+            )
+        return cleaned_data
 
     def save_attachments(self, answer):
         attachments = []

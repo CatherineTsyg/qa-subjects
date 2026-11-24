@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import PermissionDenied
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import HttpResponseBadRequest
@@ -158,10 +159,11 @@ class AnswerCreateView(LoginRequiredMixin, CreateView):
         return context
 
     def form_valid(self, form):
-        form.instance.author = self.request.user
-        form.instance.question = self.question
-        self.object = form.save()
-        form.save_attachments(self.object)
+        with transaction.atomic():
+            form.instance.author = self.request.user
+            form.instance.question = self.question
+            self.object = form.save()
+            form.save_attachments(self.object)
         messages.success(self.request, "Ответ опубликован.")
         return redirect(self.get_success_url())
 
@@ -183,8 +185,9 @@ class AnswerUpdateView(AuthorOrStaffRequiredMixin, UpdateView):
         return context
 
     def form_valid(self, form):
-        self.object = form.save()
-        form.save_attachments(self.object)
+        with transaction.atomic():
+            self.object = form.save()
+            form.save_attachments(self.object)
         messages.success(self.request, "Ответ обновлён.")
         return redirect(self.get_success_url())
 
@@ -206,29 +209,49 @@ class AnswerDeleteView(AuthorOrStaffRequiredMixin, DeleteView):
         return url
 
 
-@login_required
-@require_POST
-def answer_vote(request, pk):
-    answer = get_object_or_404(
-        Answer.objects.select_related("question"), pk=pk
-    )
-    raw_value = request.POST.get("value")
-    if raw_value not in {"1", "-1"}:
-        return HttpResponseBadRequest("Некорректный голос.")
-
-    value = int(raw_value)
-    vote = AnswerVote.objects.filter(
-        answer=answer, user=request.user
-    ).first()
-    if vote is None:
-        AnswerVote.objects.create(
-            answer=answer, user=request.user, value=value
-        )
-    elif vote.value == value:
+def _apply_vote(vote, value):
+    if vote.value == value:
         vote.delete()
     else:
         vote.value = value
         vote.save(update_fields=["value", "updated_at"])
+
+
+@login_required
+@require_POST
+def answer_vote(request, pk):
+    raw_value = request.POST.get("value")
+    if raw_value not in {"1", "-1"}:
+        return HttpResponseBadRequest("Некорректный голос.")
+    value = int(raw_value)
+
+    with transaction.atomic():
+        answer = get_object_or_404(
+            Answer.objects.select_for_update(), pk=pk
+        )
+        if answer.author_id == request.user.id:
+            raise PermissionDenied("Нельзя голосовать за свой ответ.")
+
+        vote = (
+            AnswerVote.objects.select_for_update()
+            .filter(answer=answer, user=request.user)
+            .first()
+        )
+        if vote is None:
+            try:
+                with transaction.atomic():
+                    AnswerVote.objects.create(
+                        answer=answer, user=request.user, value=value
+                    )
+            except IntegrityError:
+                # Параллельный запрос уже создал голос: применяем
+                # голосование к существующей записи.
+                vote = AnswerVote.objects.select_for_update().get(
+                    answer=answer, user=request.user
+                )
+                _apply_vote(vote, value)
+        else:
+            _apply_vote(vote, value)
 
     return redirect(answer.get_absolute_url())
 

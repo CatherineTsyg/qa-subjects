@@ -1,11 +1,14 @@
 import os
 import shutil
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db import IntegrityError, transaction
-from django.test import TestCase, override_settings
+from django.db import IntegrityError, connections, transaction
+from django.test import Client, TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 
 from .models import (
@@ -272,6 +275,103 @@ class AnswerCrudTests(BaseQaTestCase):
             Answer.objects.filter(body="Ответ с большим файлом").exists()
         )
 
+    @override_settings(MAX_FILES_PER_ANSWER=10)
+    def test_create_answer_rejects_more_than_max_files(self):
+        files = [
+            SimpleUploadedFile(
+                f"file-{index}.txt", b"x", content_type="text/plain"
+            )
+            for index in range(11)
+        ]
+        self.client.force_login(self.other)
+        response = self.client.post(
+            reverse("qa:answer_create", kwargs={"pk": self.question.pk}),
+            {"body": "Ответ с 11 файлами", "files": files},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("files", response.context["form"].errors)
+        self.assertIn(
+            "не более 10",
+            " ".join(response.context["form"].errors["files"]),
+        )
+        self.assertFalse(
+            Answer.objects.filter(body="Ответ с 11 файлами").exists()
+        )
+
+    @override_settings(MAX_FILES_PER_ANSWER=10)
+    def test_update_answer_counts_existing_attachments(self):
+        for index in range(10):
+            Attachment.objects.create(
+                answer=self.answer,
+                file=SimpleUploadedFile(
+                    f"existing-{index}.txt", b"x", content_type="text/plain"
+                ),
+                original_name=f"existing-{index}.txt",
+            )
+        original_body = self.answer.body
+        self.client.force_login(self.other)
+        response = self.client.post(
+            reverse("qa:answer_update", kwargs={"pk": self.answer.pk}),
+            {
+                "body": "Обновлённый ответ",
+                "files": SimpleUploadedFile(
+                    "extra.txt", b"x", content_type="text/plain"
+                ),
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("files", response.context["form"].errors)
+        self.answer.refresh_from_db()
+        self.assertEqual(self.answer.body, original_body)
+        self.assertEqual(self.answer.attachments.count(), 10)
+
+    def test_answer_creation_is_atomic_when_attachment_save_fails(self):
+        self.client.force_login(self.other)
+        with patch(
+            "qa.views.AnswerForm.save_attachments",
+            side_effect=RuntimeError("storage failure"),
+        ):
+            with self.assertRaises(RuntimeError):
+                self.client.post(
+                    reverse(
+                        "qa:answer_create", kwargs={"pk": self.question.pk}
+                    ),
+                    {
+                        "body": "Ответ, который должен откатиться",
+                        "files": SimpleUploadedFile(
+                            "file.txt", b"x", content_type="text/plain"
+                        ),
+                    },
+                )
+        self.assertFalse(
+            Answer.objects.filter(
+                body="Ответ, который должен откатиться"
+            ).exists()
+        )
+
+    def test_answer_update_is_atomic_when_attachment_save_fails(self):
+        original_body = self.answer.body
+        self.client.force_login(self.other)
+        with patch(
+            "qa.views.AnswerForm.save_attachments",
+            side_effect=RuntimeError("storage failure"),
+        ):
+            with self.assertRaises(RuntimeError):
+                self.client.post(
+                    reverse(
+                        "qa:answer_update", kwargs={"pk": self.answer.pk}
+                    ),
+                    {
+                        "body": "Изменение, которое должно откатиться",
+                        "files": SimpleUploadedFile(
+                            "file.txt", b"x", content_type="text/plain"
+                        ),
+                    },
+                )
+        self.answer.refresh_from_db()
+        self.assertEqual(self.answer.body, original_body)
+        self.assertEqual(self.answer.attachments.count(), 0)
+
     def test_only_author_or_staff_can_update_answer(self):
         url = reverse("qa:answer_update", kwargs={"pk": self.answer.pk})
 
@@ -371,6 +471,90 @@ class VotingTests(BaseQaTestCase):
     def test_anonymous_cannot_see_active_vote_buttons(self):
         response = self.client.get(self.question.get_absolute_url())
         self.assertContains(response, "disabled")
+
+    def test_author_cannot_vote_for_own_answer(self):
+        own_answer = Answer.objects.create(
+            question=self.question,
+            author=self.author,
+            body="Мой собственный ответ.",
+        )
+        url = reverse(
+            "qa:answer_vote", kwargs={"pk": own_answer.pk}
+        )
+        self.client.force_login(self.author)
+        response = self.client.post(url, {"value": "1"})
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(
+            AnswerVote.objects.filter(
+                answer=own_answer, user=self.author
+            ).exists()
+        )
+
+    def test_vote_buttons_hidden_for_own_answer(self):
+        own_answer = Answer.objects.create(
+            question=self.question,
+            author=self.author,
+            body="Мой собственный ответ.",
+        )
+        self.client.force_login(self.author)
+        response = self.client.get(self.question.get_absolute_url())
+        self.assertNotContains(
+            response,
+            reverse("qa:answer_vote", kwargs={"pk": own_answer.pk}),
+        )
+        self.assertContains(
+            response,
+            reverse("qa:answer_vote", kwargs={"pk": self.answer.pk}),
+        )
+        self.assertContains(response, "Ваш ответ")
+
+
+class ConcurrentVotingTests(TransactionTestCase):
+    def setUp(self):
+        self.author = User.objects.create_user(
+            username="alice", password="StrongPass123!"
+        )
+        self.other = User.objects.create_user(
+            username="bob", password="StrongPass123!"
+        )
+        subject = Subject.objects.create(name="Физика", slug="fizika")
+        question = Question.objects.create(
+            subject=subject,
+            author=self.author,
+            title="Что такое инерция?",
+            body="Объясните явление.",
+        )
+        self.answer = Answer.objects.create(
+            question=question,
+            author=self.other,
+            body="Свойство тел сохранять состояние движения.",
+        )
+        self.url = reverse(
+            "qa:answer_vote", kwargs={"pk": self.answer.pk}
+        )
+        self.barrier = Barrier(2)
+
+    def _vote(self):
+        client = Client()
+        try:
+            client.force_login(self.author)
+            self.barrier.wait(timeout=5)
+            return client.post(self.url, {"value": "1"}).status_code
+        finally:
+            connections.close_all()
+
+    def test_concurrent_identical_votes_do_not_raise_integrity_error(self):
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = [executor.submit(self._vote) for _ in range(2)]
+            statuses = [future.result() for future in futures]
+
+        self.assertEqual(statuses, [302, 302])
+        self.assertEqual(
+            AnswerVote.objects.filter(
+                answer=self.answer, user=self.author
+            ).count(),
+            0,
+        )
 
 
 class VoteConstraintTests(BaseQaTestCase):

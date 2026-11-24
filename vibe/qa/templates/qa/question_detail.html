@@ -38,22 +38,28 @@
     {% for answer in answers %}
         <article class="card answer-card" id="answer-{{ answer.pk }}">
             <div class="vote-box">
-                <form method="post" action="{% url 'qa:answer_vote' answer.pk %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="value" value="1">
-                    <button type="submit" class="vote-btn{% if answer.user_vote == 1 %} active{% endif %}"
-                            title="Лайк" aria-label="Лайк"
-                            {% if not user.is_authenticated %}disabled{% endif %}>▲</button>
-                </form>
-                <span class="rating" title="Рейтинг">{{ answer.rating }}</span>
-                <form method="post" action="{% url 'qa:answer_vote' answer.pk %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="value" value="-1">
-                    <button type="submit" class="vote-btn{% if answer.user_vote == -1 %} active{% endif %}"
-                            title="Дизлайк" aria-label="Дизлайк"
-                            {% if not user.is_authenticated %}disabled{% endif %}>▼</button>
-                </form>
-                <span class="vote-hint">{{ answer.like_count }} / {{ answer.dislike_count }}</span>
+                {% if answer.author_id == user.id %}
+                    <span class="rating" title="Рейтинг">{{ answer.rating }}</span>
+                    <span class="vote-hint">{{ answer.like_count }} / {{ answer.dislike_count }}</span>
+                    <span class="vote-hint">Ваш ответ</span>
+                {% else %}
+                    <form method="post" action="{% url 'qa:answer_vote' answer.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="value" value="1">
+                        <button type="submit" class="vote-btn{% if answer.user_vote == 1 %} active{% endif %}"
+                                title="Лайк" aria-label="Лайк"
+                                {% if not user.is_authenticated %}disabled{% endif %}>▲</button>
+                    </form>
+                    <span class="rating" title="Рейтинг">{{ answer.rating }}</span>
+                    <form method="post" action="{% url 'qa:answer_vote' answer.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="value" value="-1">
+                        <button type="submit" class="vote-btn{% if answer.user_vote == -1 %} active{% endif %}"
+                                title="Дизлайк" aria-label="Дизлайк"
+                                {% if not user.is_authenticated %}disabled{% endif %}>▼</button>
+                    </form>
+                    <span class="vote-hint">{{ answer.like_count }} / {{ answer.dislike_count }}</span>
+                {% endif %}
             </div>
 
             <div class="answer-main">
